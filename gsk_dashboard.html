@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GSK CTC Analytics Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --gsk-orange: #F36F21;
+    --gsk-teal:   #00857C;
+    --gsk-navy:   #00263A;
+    --gsk-gold:   #F7A600;
+    --gsk-light:  #F8FAFB;
+    --gsk-grey:   #636466;
+    --white:      #FFFFFF;
+    --shadow:     0 4px 20px rgba(0,38,58,0.10);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--gsk-light);
+    color: var(--gsk-navy);
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    background: linear-gradient(135deg, var(--gsk-navy) 0%, #00435A 100%);
+    color: white;
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 70px;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+  }
+  .logo { display:flex; align-items:center; gap:14px; }
+  .logo-box {
+    background: var(--gsk-orange);
+    color: white; font-size: 18px; font-weight: 900;
+    width: 44px; height: 44px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    letter-spacing: -1px;
+  }
+  .logo h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
+  .logo p  { font-size: 11px; opacity: 0.75; }
+  .header-meta { font-size: 12px; opacity: 0.7; text-align: right; }
+
+  /* ── Nav Tabs ── */
+  nav {
+    background: white;
+    border-bottom: 2px solid #E8EEF2;
+    padding: 0 32px;
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 14px 20px;
+    font-size: 13px; font-weight: 600;
+    color: var(--gsk-grey);
+    cursor: pointer; white-space: nowrap;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab:hover  { color: var(--gsk-teal); }
+  .tab.active { color: var(--gsk-orange); border-bottom-color: var(--gsk-orange); }
+
+  /* ── Main Content ── */
+  main { padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
+
+  .page { display:none; }
+  .page.active { display:block; }
+
+  /* ── KPI Cards ── */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .kpi-card {
+    background: white;
+    border-radius: 14px;
+    padding: 20px 22px;
+    box-shadow: var(--shadow);
+    border-left: 5px solid var(--gsk-orange);
+    transition: transform 0.2s;
+  }
+  .kpi-card:hover { transform: translateY(-2px); }
+  .kpi-card:nth-child(2) { border-left-color: var(--gsk-teal); }
+  .kpi-card:nth-child(3) { border-left-color: var(--gsk-gold); }
+  .kpi-card:nth-child(4) { border-left-color: var(--gsk-navy); }
+  .kpi-card:nth-child(5) { border-left-color: #8B4513; }
+  .kpi-label { font-size: 11px; font-weight: 600; color: var(--gsk-grey); text-transform:uppercase; letter-spacing: 0.8px; }
+  .kpi-value { font-size: 28px; font-weight: 800; color: var(--gsk-navy); margin: 6px 0 4px; line-height:1; }
+  .kpi-sub   { font-size: 11px; color: var(--gsk-grey); }
+  .badge-up  { color: #00857C; font-weight: 700; }
+  .badge-dn  { color: #D64550; font-weight: 700; }
+
+  /* ── Chart Cards ── */
+  .chart-grid { display: grid; gap: 20px; }
+  .chart-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+  .chart-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+  .chart-card {
+    background: white;
+    border-radius: 14px;
+    padding: 22px 24px;
+    box-shadow: var(--shadow);
+  }
+  .chart-card.wide { grid-column: 1 / -1; }
+
+  .chart-title {
+    font-size: 14px; font-weight: 700;
+    color: var(--gsk-navy);
+    margin-bottom: 4px;
+  }
+  .chart-sub {
+    font-size: 11px; color: var(--gsk-grey);
+    margin-bottom: 16px;
+  }
+  canvas { max-height: 320px; }
+
+  /* ── Section Title ── */
+  .section-title {
+    font-size: 20px; font-weight: 800;
+    color: var(--gsk-navy);
+    margin-bottom: 20px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-title::after {
+    content:''; flex:1;
+    height:2px;
+    background: linear-gradient(to right, var(--gsk-orange), transparent);
+  }
+  .dot { width:10px; height:10px; border-radius:50%; background:var(--gsk-orange); display:inline-block; }
+
+  /* ── Table ── */
+  .data-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .data-table th {
+    background: var(--gsk-navy); color: white;
+    padding: 10px 14px; text-align:left; font-weight:600;
+    font-size:11px; text-transform:uppercase; letter-spacing:0.5px;
+  }
+  .data-table td { padding:10px 14px; border-bottom:1px solid #EEF2F5; }
+  .data-table tr:hover td { background:#F0F7FF; }
+  .grade-S { background:#00857C; color:white; padding:2px 8px; border-radius:12px; font-weight:700; font-size:11px; }
+  .grade-A { background:#F36F21; color:white; padding:2px 8px; border-radius:12px; font-weight:700; font-size:11px; }
+  .grade-B { background:#F7A600; color:white; padding:2px 8px; border-radius:12px; font-weight:700; font-size:11px; }
+  .grade-C { background:#A0A0A0; color:white; padding:2px 8px; border-radius:12px; font-weight:700; font-size:11px; }
+  .grade-D { background:#D64550; color:white; padding:2px 8px; border-radius:12px; font-weight:700; font-size:11px; }
+
+  /* ── Score Bar ── */
+  .score-bar-wrap { display:flex; align-items:center; gap:8px; }
+  .score-bar { height:8px; border-radius:4px; background:var(--gsk-orange); }
+
+  /* ── Info Banner ── */
+  .info-banner {
+    background: linear-gradient(135deg, #E8F5F4 0%, #F0F8FF 100%);
+    border: 1px solid #B2DDD9;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: var(--gsk-navy);
+  }
+  .info-banner strong { color: var(--gsk-teal); }
+
+  /* ── Footer ── */
+  footer {
+    text-align:center; padding: 24px;
+    font-size: 11px; color: var(--gsk-grey);
+    border-top: 1px solid #E8EEF2;
+    margin-top: 40px;
+  }
+
+  @media(max-width:768px) {
+    .chart-grid.cols-2, .chart-grid.cols-3 { grid-template-columns:1fr; }
+    main { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-box">GSK</div>
+    <div>
+      <h1>CTC Analytics Dashboard</h1>
+      <p>Pakistan Consumer Trade Category · Oct 2024 – Apr 2025</p>
+    </div>
+  </div>
+  <div class="header-meta">
+    Project Trainee: Arqam Faiz Siddiqui<br>
+    Data Period: Jan 2022 – Dec 2024
+  </div>
+</header>
+
+<nav>
+  <div class="tab active" onclick="showPage('overview')">📊 Overview</div>
+  <div class="tab" onclick="showPage('brand')">💊 Brand Performance</div>
+  <div class="tab" onclick="showPage('pasbaan')">🚀 PASBAAN Launch</div>
+  <div class="tab" onclick="showPage('distributor')">🚚 Distributor Network</div>
+  <div class="tab" onclick="showPage('decilo')">📍 Decilo-Meter</div>
+  <div class="tab" onclick="showPage('forecast')">📈 Forecast</div>
+</nav>
+
+<main>
+
+<!-- ═══════════════════════ OVERVIEW ═══════════════════════ -->
+<div id="page-overview" class="page active">
+  <div class="section-title"><span class="dot"></span> Executive Overview</div>
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-label">Total Brands Tracked</div>
+      <div class="kpi-value">14</div>
+      <div class="kpi-sub">Distribute-Only Portfolio</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Pharmacy Outlets</div>
+      <div class="kpi-value">55K</div>
+      <div class="kpi-sub">Nationwide Network</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Distributor Partners</div>
+      <div class="kpi-value">32</div>
+      <div class="kpi-sub">Across 7 Regions</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">IMS Volume (Dec 2024)</div>
+      <div class="kpi-value">65.2K</div>
+      <div class="kpi-sub"><span class="badge-up">↑ 8.4%</span> vs prior year</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">PASBAAN Sales Uplift</div>
+      <div class="kpi-value">+15%</div>
+      <div class="kpi-sub">Post-launch (Dec 2024)</div>
+    </div>
+  </div>
+
+  <div class="chart-grid cols-2" style="margin-bottom:20px">
+    <div class="chart-card wide">
+      <div class="chart-title">IMS vs TMS Monthly Trend (Last 24 Months)</div>
+      <div class="chart-sub">In-Market Sales vs Total Market Sales · All Brands Combined</div>
+      <canvas id="c-overview-trend"></canvas>
+    </div>
+  </div>
+
+  <div class="chart-grid cols-2">
+    <div class="chart-card">
+      <div class="chart-title">Sales by Therapy Category</div>
+      <div class="chart-sub">IMS Unit Volume Share</div>
+      <canvas id="c-category-donut"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Portfolio Priority Mix</div>
+      <div class="chart-sub">A / B / C priority brand distribution</div>
+      <canvas id="c-priority-bar"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ BRAND PERFORMANCE ═══════════════════════ -->
+<div id="page-brand" class="page">
+  <div class="section-title"><span class="dot"></span> Brand KPI Scorecard</div>
+
+  <div class="info-banner">
+    <strong>Composite KPI Score</strong> weights: IMS Growth (35%) · Market Share (25%) · Stock Availability (25%) · Rx Growth (15%).
+    Graded S → D. Target line = 75 points.
+  </div>
+
+  <div class="chart-grid cols-2" style="margin-bottom:20px">
+    <div class="chart-card">
+      <div class="chart-title">Composite KPI Score by Brand</div>
+      <div class="chart-sub">Ranked · Target = 75 pts</div>
+      <canvas id="c-scorecard-bar"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Market Share Distribution</div>
+      <div class="chart-sub">Latest Month</div>
+      <canvas id="c-mshare-polar"></canvas>
+    </div>
+  </div>
+
+  <div class="chart-card" style="margin-bottom:20px">
+    <div class="chart-title">Full Brand Scorecard</div>
+    <div class="chart-sub">All KPI dimensions · Sorted by composite score</div>
+    <div style="overflow-x:auto;">
+      <table class="data-table" id="scorecard-table">
+        <thead>
+          <tr>
+            <th>#</th><th>Brand</th><th>KPI Score</th>
+            <th>Market Share</th><th>QoQ Growth</th><th>Stock Avail.</th>
+            <th>Rx Growth</th><th>Grade</th>
+          </tr>
+        </thead>
+        <tbody id="scorecard-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ PASBAAN ═══════════════════════ -->
+<div id="page-pasbaan" class="page">
+  <div class="section-title"><span class="dot"></span> PASBAAN Product Launch KPIs</div>
+  <div class="kpi-row">
+    <div class="kpi-card"><div class="kpi-label">Launch Month</div><div class="kpi-value">Dec'24</div><div class="kpi-sub">First shipment to trade</div></div>
+    <div class="kpi-card"><div class="kpi-label">Sales Uplift</div><div class="kpi-value">+15%</div><div class="kpi-sub"><span class="badge-up">↑ Exceeded target</span></div></div>
+    <div class="kpi-card"><div class="kpi-label">Tracking Period</div><div class="kpi-value">7 Mo</div><div class="kpi-sub">Oct 2024 – Apr 2025</div></div>
+    <div class="kpi-card"><div class="kpi-label">KPIs Monitored</div><div class="kpi-value">3</div><div class="kpi-sub">Rx · Stock · Acquisition</div></div>
+  </div>
+
+  <div class="chart-grid cols-2" style="margin-bottom:20px">
+    <div class="chart-card wide">
+      <div class="chart-title">Rx Growth vs Target</div>
+      <div class="chart-sub">Prescription growth tracking · Actual vs Target</div>
+      <canvas id="c-pb-rx"></canvas>
+    </div>
+  </div>
+
+  <div class="chart-grid cols-2">
+    <div class="chart-card">
+      <div class="chart-title">Stock Coverage vs Target (70%)</div>
+      <div class="chart-sub">Outlet stock availability post-launch</div>
+      <canvas id="c-pb-stock"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Acquisition Rate vs Target</div>
+      <div class="chart-sub">New outlet acquisition progress</div>
+      <canvas id="c-pb-acq"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ DISTRIBUTOR ═══════════════════════ -->
+<div id="page-distributor" class="page">
+  <div class="section-title"><span class="dot"></span> Distributor Network Performance</div>
+  <div class="kpi-row">
+    <div class="kpi-card"><div class="kpi-label">Total Distributors</div><div class="kpi-value">32</div><div class="kpi-sub">Nationwide</div></div>
+    <div class="kpi-card"><div class="kpi-label">Avg Achievement</div><div class="kpi-value">97.3%</div><div class="kpi-sub">vs Revenue Target</div></div>
+    <div class="kpi-card"><div class="kpi-label">Avg Coverage</div><div class="kpi-value">85.1%</div><div class="kpi-sub">Outlet Coverage</div></div>
+    <div class="kpi-card"><div class="kpi-label">On-Time Delivery</div><div class="kpi-value">86.4%</div><div class="kpi-sub">Order Fulfillment Rate</div></div>
+  </div>
+
+  <div class="chart-grid cols-2" style="margin-bottom:20px">
+    <div class="chart-card">
+      <div class="chart-title">Composite Score by Region</div>
+      <div class="chart-sub">Average across all distributors in each region</div>
+      <canvas id="c-dist-region"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">KPI Breakdown by Region</div>
+      <div class="chart-sub">Achievement · Coverage · On-Time Delivery</div>
+      <canvas id="c-dist-kpi"></canvas>
+    </div>
+  </div>
+
+  <div class="chart-grid cols-2">
+    <div class="chart-card">
+      <div class="chart-title">Distributor Performance Clusters</div>
+      <div class="chart-sub">4 segments based on composite score</div>
+      <canvas id="c-dist-cluster"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Return Rate by Region</div>
+      <div class="chart-sub">Lower is better · Target &lt; 2%</div>
+      <canvas id="c-dist-returns"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ DECILO-METER ═══════════════════════ -->
+<div id="page-decilo" class="page">
+  <div class="section-title"><span class="dot"></span> Decilo-Meter Analytics</div>
+  <div class="info-banner">
+    <strong>Decilo-Meter</strong> segments 55,000+ pharmacy outlets into 10 performance deciles (D1=lowest, D10=highest).
+    Focus resources on top deciles to maximise ROI. Top 20% outlets drive ~26% of total sales.
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi-card"><div class="kpi-label">Total Outlets</div><div class="kpi-value">55K+</div><div class="kpi-sub">Across Pakistan</div></div>
+    <div class="kpi-card"><div class="kpi-label">Top Decile Share</div><div class="kpi-value">~26%</div><div class="kpi-sub">D9+D10 of total sales</div></div>
+    <div class="kpi-card"><div class="kpi-label">Active Outlets</div><div class="kpi-value">~92%</div><div class="kpi-sub">Actively purchasing</div></div>
+    <div class="kpi-card"><div class="kpi-label">Avg Brands/Outlet</div><div class="kpi-value">7.2</div><div class="kpi-sub">GSK brands carried</div></div>
+  </div>
+
+  <div class="chart-grid cols-2" style="margin-bottom:20px">
+    <div class="chart-card wide">
+      <div class="chart-title">Sales Concentration by Decile (Pareto Analysis)</div>
+      <div class="chart-sub">Bar = Sales Share % · Line = Cumulative Share %</div>
+      <canvas id="c-decilo-pareto" style="max-height:360px"></canvas>
+    </div>
+  </div>
+
+  <div class="chart-grid cols-2">
+    <div class="chart-card">
+      <div class="chart-title">Outlet Count by Decile</div>
+      <div class="chart-sub">Distribution of outlets across performance segments</div>
+      <canvas id="c-decilo-outlets"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Average Sales per Outlet by Decile</div>
+      <div class="chart-sub">PKR monthly sales · Logarithmic scale</div>
+      <canvas id="c-decilo-avgsales"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ FORECAST ═══════════════════════ -->
+<div id="page-forecast" class="page">
+  <div class="section-title"><span class="dot"></span> IMS Sales Forecast</div>
+  <div class="info-banner">
+    <strong>Methodology:</strong> Linear trend extrapolation + seasonal index adjustment.
+    Forecast horizon = 6 months. Confidence band = ±12% of forecast value.
+  </div>
+
+  <div class="chart-grid cols-2" style="margin-bottom:20px">
+    <div class="chart-card wide">
+      <div class="chart-title">Panadol – 6-Month IMS Forecast</div>
+      <div class="chart-sub">Actuals (solid) + Forecast (dashed) + 95% CI (shaded)</div>
+      <canvas id="c-fc-panadol" style="max-height:300px"></canvas>
+    </div>
+  </div>
+
+  <div class="chart-grid cols-2">
+    <div class="chart-card">
+      <div class="chart-title">Augmentin – 6-Month Forecast</div>
+      <div class="chart-sub">Antibiotic category leader</div>
+      <canvas id="c-fc-augmentin"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">PASBAAN – 6-Month Forecast</div>
+      <div class="chart-sub">New launch · Ramp-up trajectory</div>
+      <canvas id="c-fc-pasbaan"></canvas>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<footer>
+  GSK CTC Analytics Dashboard · Built by Arqam Faiz Siddiqui · Project Trainee Oct 2024 – Apr 2025<br>
+  Synthetic data for portfolio demonstration purposes · Powered by Python + Chart.js
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  DATA (Embedded from pipeline outputs)
+// ═══════════════════════════════════════════════════════
+const D = {
+  labels:    ["Jan 23","Feb 23","Mar 23","Apr 23","May 23","Jun 23","Jul 23","Aug 23","Sep 23","Oct 23","Nov 23","Dec 23","Jan 24","Feb 24","Mar 24","Apr 24","May 24","Jun 24","Jul 24","Aug 24","Sep 24","Oct 24","Nov 24","Dec 24"],
+  ims_total: [42100,39800,43500,41200,44800,46200,43900,45100,47300,46800,49200,51000,48700,47300,50200,52100,51800,54300,53700,55900,57100,59300,61500,65200],
+  tms_total: [198000,187000,205000,194000,211000,218000,207000,213000,223000,221000,232000,241000,230000,223000,237000,246000,244000,256000,253000,264000,269000,280000,290000,308000],
+  sc_brands: ["Ventolin","Panadol","Augmentin","Seretide","Zantac","Flixonase","PASBAAN","Voltaren","Nasonex","Calpol","Piriton","Amoxil","Betnovate","Clavulin"],
+  sc_scores: [63.3,61.8,60.1,57.4,55.2,53.9,51.7,49.8,47.3,45.6,43.2,41.8,39.5,37.1],
+  sc_grades: ["B","B","B","B","C","C","C","C","C","C","C","C","C","C"],
+  sc_mshare: [28.4,24.1,21.3,9.2,14.8,6.7,13.1,15.2,8.9,17.4,19.3,12.8,11.1,7.4],
+  sc_qoq:    [3.2,2.8,1.9,-0.5,2.1,-0.2,null,0.8,-1.1,1.4,0.9,-2.1,-0.4,-1.8],
+  sc_stock:  [84.2,88.1,85.7,79.3,82.4,77.6,72.1,81.9,76.8,83.2,80.1,79.7,78.4,75.2],
+  sc_rx:     [6.1,5.4,4.8,3.9,3.2,2.8,null,2.1,1.9,3.1,2.7,1.8,1.4,0.9],
+  pb_months: ["Oct 2024","Nov 2024","Dec 2024","Jan 2025","Feb 2025","Mar 2025","Apr 2025"],
+  pb_rx:     [0,2.1,8.4,16.2,23.8,31.5,39.2],
+  pb_stock:  [0,12.3,45.2,52.8,61.4,69.1,77.3],
+  pb_acq:    [0,8.4,32.1,44.7,56.8,67.2,78.9],
+  pb_target_rx:    [0,7,14,21,28,35,42],
+  pb_target_stock: [70,70,70,70,70,70,70],
+  pb_target_acq:   [30,40,50,60,70,80,90],
+  reg_names: ["Karachi","Lahore","Islamabad","Faisalabad","Peshawar","Quetta","Multan"],
+  reg_ach:   [98.4,97.1,96.8,97.9,95.2,94.8,96.3],
+  reg_cov:   [87.2,85.4,84.9,83.1,82.7,80.4,81.9],
+  reg_comp:  [91.2,89.7,88.4,87.9,85.1,83.6,84.8],
+  reg_ret:   [1.8,2.1,2.3,2.4,2.7,2.9,2.5],
+  cat_names: ["Analgesic","Antibiotic","Respiratory","GI","Anti-inflammatory","Antihistamine","Dermatology"],
+  cat_vals:  [285000,198000,167000,89000,78000,42000,36000],
+  dec_decile:[1,2,3,4,5,6,7,8,9,10],
+  dec_share: [2.4,3.1,4.2,5.8,7.1,9.3,11.8,14.2,18.4,24.1],  // adjusted top 2 ~42%
+  dec_cumul: [2.4,5.5,9.7,15.5,22.6,31.9,43.7,57.9,76.3,100],
+  dec_outlets:[4800,5100,5400,5600,5700,5800,5900,6100,6200,4400],
+  dec_avgsales:[12000,18000,28000,42000,65000,98000,145000,210000,320000,680000],
+  cluster_labels: ["Champion","Performer","Developing","Underperformer"],
+  cluster_vals:   [8,8,8,8],
+  // Forecast data
+  fc_pan_labels: ["Oct 23","Nov 23","Dec 23","Jan 24","Feb 24","Mar 24","Apr 24","May 24","Jun 24","Jul 24","Aug 24","Sep 24","Oct 24","Nov 24","Dec 24","Jan 25","Feb 25","Mar 25","Apr 25","May 25","Jun 25"],
+  fc_pan_actual: [11800,12400,13100,12200,11900,12600,13000,12800,13500,13200,13800,14100,13700,14300,14800,null,null,null,null,null,null],
+  fc_pan_fc:     [null,null,null,null,null,null,null,null,null,null,null,null,null,null,14800,15300,15800,16200,16700,17100,17500],
+  fc_pan_lo:     [null,null,null,null,null,null,null,null,null,null,null,null,null,null,14800,13464,13904,14256,14696,15048,15400],
+  fc_pan_hi:     [null,null,null,null,null,null,null,null,null,null,null,null,null,null,14800,17136,17696,18144,18704,19152,19600],
+  fc_aug_actual: [9200,9600,10100,9800,9300,9700,10000,9800,10400,10200,10700,10900,10600,11100,11400,null,null,null,null,null,null],
+  fc_aug_fc:     [null,null,null,null,null,null,null,null,null,null,null,null,null,null,11400,11900,12300,12700,13100,13500,13900],
+  fc_aug_lo:     [null,null,null,null,null,null,null,null,null,null,null,null,null,null,11400,10472,10824,11176,11528,11880,12232],
+  fc_aug_hi:     [null,null,null,null,null,null,null,null,null,null,null,null,null,null,11400,13328,13776,14224,14672,15120,15568],
+  fc_pas_actual: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,2800,null,null,null,null,null,null],
+  fc_pas_fc:     [null,null,null,null,null,null,null,null,null,null,null,null,null,null,2800,3900,5100,6400,7800,9100,10500],
+  fc_pas_lo:     [null,null,null,null,null,null,null,null,null,null,null,null,null,null,2800,3432,4488,5632,6864,8008,9240],
+  fc_pas_hi:     [null,null,null,null,null,null,null,null,null,null,null,null,null,null,2800,4368,5712,7168,8736,10192,11760],
+};
+
+// ═══════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════
+const C = {
+  orange: '#F36F21', teal: '#00857C', navy: '#00263A',
+  gold: '#F7A600', red: '#D64550', grey: '#636466',
+  p: ['#F36F21','#00857C','#00263A','#F7A600','#D64550','#636466',
+      '#A0522D','#5F9EA0','#20B2AA','#DC143C','#4682B4','#DAA520','#2E8B57','#708090'],
+};
+
+function makeChart(id, cfg) {
+  const ctx = document.getElementById(id);
+  if(!ctx) return;
+  return new Chart(ctx, cfg);
+}
+
+// ═══════════════════════════════════════════════════════
+//  OVERVIEW CHARTS
+// ═══════════════════════════════════════════════════════
+makeChart('c-overview-trend', {
+  type: 'line',
+  data: {
+    labels: D.labels,
+    datasets: [
+      { label:'IMS Units', data: D.ims_total, borderColor: C.orange, backgroundColor:'rgba(243,111,33,0.1)', fill:true, tension:0.4, borderWidth:2.5, pointRadius:2 },
+      { label:'TMS Units', data: D.tms_total, borderColor: C.teal,   backgroundColor:'rgba(0,133,124,0.07)', fill:true, tension:0.4, borderWidth:2.5, yAxisID:'y1', pointRadius:2 },
+    ]
+  },
+  options: {
+    responsive:true, interaction:{mode:'index', intersect:false},
+    plugins:{ legend:{position:'top'} },
+    scales:{
+      y:  { position:'left',  title:{display:true,text:'IMS Units'}, ticks:{callback:v=>(v/1000).toFixed(0)+'K'} },
+      y1: { position:'right', title:{display:true,text:'TMS Units'}, grid:{drawOnChartArea:false}, ticks:{callback:v=>(v/1000).toFixed(0)+'K'} },
+    }
+  }
+});
+
+makeChart('c-category-donut', {
+  type:'doughnut',
+  data:{ labels:D.cat_names, datasets:[{ data:D.cat_vals, backgroundColor:C.p, borderWidth:2, borderColor:'#fff' }] },
+  options:{ plugins:{ legend:{position:'right', labels:{font:{size:11}}} }, cutout:'55%' }
+});
+
+makeChart('c-priority-bar', {
+  type:'bar',
+  data:{
+    labels:['Priority A (Top)','Priority B (Growth)','Priority C (Distribute)'],
+    datasets:[{
+      label:'Brands',
+      data:[2,3,9],
+      backgroundColor:[C.orange, C.gold, C.teal],
+      borderRadius:6,
+    }]
+  },
+  options:{ plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{stepSize:1}}} }
+});
+
+// ═══════════════════════════════════════════════════════
+//  BRAND PERFORMANCE
+// ═══════════════════════════════════════════════════════
+makeChart('c-scorecard-bar', {
+  type:'bar',
+  data:{
+    labels: D.sc_brands,
+    datasets:[{
+      label:'KPI Score',
+      data: D.sc_scores,
+      backgroundColor: D.sc_scores.map(v=>v>=75?C.teal:v>=60?C.orange:v>=45?C.gold:C.red),
+      borderRadius:5,
+    }]
+  },
+  options:{
+    indexAxis:'y',
+    plugins:{ legend:{display:false}, annotation:{ annotations:{ line1:{ type:'line', x:75, borderColor:'#999', borderDash:[4,4], label:{content:'Target 75', enabled:true, position:'start'} } } } },
+    scales:{
+      x:{ beginAtZero:true, max:105, title:{display:true,text:'Score'} }
+    }
+  }
+});
+
+makeChart('c-mshare-polar', {
+  type:'polarArea',
+  data:{ labels:D.sc_brands, datasets:[{ data:D.sc_mshare, backgroundColor:D.sc_mshare.map((_,i)=>C.p[i]+'CC') }] },
+  options:{ plugins:{ legend:{position:'right', labels:{font:{size:10}}} } }
+});
+
+// Build scorecard table
+(function(){
+  const tbody = document.getElementById('scorecard-tbody');
+  if(!tbody) return;
+  D.sc_brands.forEach((b,i)=>{
+    const g = D.sc_grades[i];
+    const qoq = D.sc_qoq[i];
+    const stock = D.sc_stock[i];
+    const rx = D.sc_rx[i];
+    const qoqStr = qoq!==null ? (qoq>=0?`<span class="badge-up">+${qoq}%</span>`:`<span class="badge-dn">${qoq}%</span>`) : '—';
+    tbody.innerHTML += `
+      <tr>
+        <td>${i+1}</td>
+        <td><strong>${b}</strong></td>
+        <td>
+          <div class="score-bar-wrap">
+            <div class="score-bar" style="width:${D.sc_scores[i]}px;background:${D.sc_scores[i]>=75?'#00857C':D.sc_scores[i]>=60?'#F36F21':'#F7A600'}"></div>
+            ${D.sc_scores[i]}
+          </div>
+        </td>
+        <td>${D.sc_mshare[i]}%</td>
+        <td>${qoqStr}</td>
+        <td>${stock !== undefined ? stock+'%' : '—'}</td>
+        <td>${rx!==null && rx!==undefined ? rx+'%':'—'}</td>
+        <td><span class="grade-${g}">${g}</span></td>
+      </tr>`;
+  });
+})();
+
+// ═══════════════════════════════════════════════════════
+//  PASBAAN
+// ═══════════════════════════════════════════════════════
+makeChart('c-pb-rx', {
+  type:'bar',
+  data:{
+    labels: D.pb_months,
+    datasets:[
+      { label:'Actual Rx Growth %', data:D.pb_rx, backgroundColor:C.orange+'BB', borderRadius:5, order:2 },
+      { label:'Target', data:D.pb_target_rx, type:'line', borderColor:C.navy, borderWidth:2, borderDash:[5,4], fill:false, pointRadius:3, order:1 },
+    ]
+  },
+  options:{ plugins:{legend:{position:'top'}}, scales:{y:{beginAtZero:true,title:{display:true,text:'Rx Growth (%)'}}} }
+});
+
+makeChart('c-pb-stock', {
+  type:'bar',
+  data:{
+    labels:D.pb_months,
+    datasets:[
+      { label:'Stock Coverage %', data:D.pb_stock, backgroundColor:C.teal+'BB', borderRadius:5, order:2 },
+      { label:'Target (70%)', data:D.pb_target_stock, type:'line', borderColor:'red', borderWidth:2, borderDash:[5,4], fill:false, order:1 },
+    ]
+  },
+  options:{ plugins:{legend:{position:'top'}}, scales:{y:{beginAtZero:true,max:110,title:{display:true,text:'Coverage (%)'}}} }
+});
+
+makeChart('c-pb-acq', {
+  type:'bar',
+  data:{
+    labels:D.pb_months,
+    datasets:[
+      { label:'Acquisition Rate %', data:D.pb_acq, backgroundColor:C.gold+'BB', borderRadius:5, order:2 },
+      { label:'Target', data:D.pb_target_acq, type:'line', borderColor:C.navy, borderWidth:2, borderDash:[5,4], fill:false, order:1 },
+    ]
+  },
+  options:{ plugins:{legend:{position:'top'}}, scales:{y:{beginAtZero:true,max:110,title:{display:true,text:'Acquisition (%)'}}} }
+});
+
+// ═══════════════════════════════════════════════════════
+//  DISTRIBUTOR
+// ═══════════════════════════════════════════════════════
+makeChart('c-dist-region', {
+  type:'bar',
+  data:{
+    labels:D.reg_names,
+    datasets:[{
+      label:'Composite Score',
+      data:D.reg_comp,
+      backgroundColor:D.reg_comp.map(v=>v>=90?C.teal:v>=86?C.orange:C.gold),
+      borderRadius:5,
+    }]
+  },
+  options:{
+    plugins:{legend:{display:false}},
+    scales:{y:{min:75,max:100,title:{display:true,text:'Score'}}}
+  }
+});
+
+makeChart('c-dist-kpi', {
+  type:'bar',
+  data:{
+    labels:D.reg_names,
+    datasets:[
+      { label:'Achievement %', data:D.reg_ach, backgroundColor:C.orange+'BB', borderRadius:3 },
+      { label:'Coverage %',    data:D.reg_cov, backgroundColor:C.teal+'BB',   borderRadius:3 },
+    ]
+  },
+  options:{
+    plugins:{legend:{position:'top'}},
+    scales:{y:{min:75,max:102}}
+  }
+});
+
+makeChart('c-dist-cluster', {
+  type:'doughnut',
+  data:{
+    labels:D.cluster_labels,
+    datasets:[{ data:D.cluster_vals, backgroundColor:[C.teal,C.orange,C.gold,C.red], borderWidth:2, borderColor:'#fff' }]
+  },
+  options:{ plugins:{ legend:{position:'bottom'} }, cutout:'50%' }
+});
+
+makeChart('c-dist-returns', {
+  type:'bar',
+  data:{
+    labels:D.reg_names,
+    datasets:[{
+      label:'Return Rate %',
+      data:D.reg_ret,
+      backgroundColor:D.reg_ret.map(v=>v<=2?C.teal:v<=2.5?C.gold:C.red),
+      borderRadius:5,
+    }]
+  },
+  options:{
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>`${v.raw}%`}}},
+    scales:{y:{beginAtZero:true,max:4,title:{display:true,text:'Return Rate (%)'}}}
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+//  DECILO-METER
+// ═══════════════════════════════════════════════════════
+makeChart('c-decilo-pareto', {
+  type:'bar',
+  data:{
+    labels:D.dec_decile.map(d=>'D'+d),
+    datasets:[
+      { label:'Sales Share %', data:D.dec_share,
+        backgroundColor:D.dec_decile.map(d=>d>=9?C.orange+'CC':C.teal+'88'),
+        borderRadius:5, order:2, yAxisID:'y' },
+      { label:'Cumulative %',  data:D.dec_cumul, type:'line',
+        borderColor:C.navy, borderWidth:2.5, fill:false, pointRadius:4, order:1, yAxisID:'y1' },
+    ]
+  },
+  options:{
+    responsive:true,
+    plugins:{legend:{position:'top'}},
+    scales:{
+      y:  { position:'left',  max:30, title:{display:true,text:'Sales Share (%)'} },
+      y1: { position:'right', max:110, title:{display:true,text:'Cumulative (%)'}, grid:{drawOnChartArea:false} },
+    }
+  }
+});
+
+makeChart('c-decilo-outlets', {
+  type:'bar',
+  data:{
+    labels:D.dec_decile.map(d=>'D'+d),
+    datasets:[{ label:'Outlet Count', data:D.dec_outlets,
+      backgroundColor:D.dec_decile.map(d=>d>=9?C.orange+'CC':C.teal+'88'), borderRadius:5 }]
+  },
+  options:{ plugins:{legend:{display:false}}, scales:{y:{title:{display:true,text:'Outlets'}}} }
+});
+
+makeChart('c-decilo-avgsales', {
+  type:'bar',
+  data:{
+    labels:D.dec_decile.map(d=>'D'+d),
+    datasets:[{ label:'Avg Monthly Sales (PKR)', data:D.dec_avgsales,
+      backgroundColor:D.dec_decile.map(d=>d>=9?C.orange+'CC':C.teal+'88'), borderRadius:5 }]
+  },
+  options:{
+    plugins:{legend:{display:false}},
+    scales:{ y:{ type:'logarithmic', title:{display:true,text:'Avg Sales PKR (Log)'}, ticks:{callback:v=>{if(v>=1000)return(v/1000).toFixed(0)+'K';return v;}} } }
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+//  FORECAST
+// ═══════════════════════════════════════════════════════
+function fcChart(id, label, color, actual, fc, lo, hi, labels) {
+  makeChart(id, {
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        { label:'Actual', data:actual, borderColor:color, borderWidth:2.5, pointRadius:2, fill:false },
+        { label:'Forecast', data:fc, borderColor:color, borderWidth:2, borderDash:[6,3], pointRadius:3, fill:false },
+        { label:'CI Upper', data:hi, borderColor:'transparent', fill:'+1', backgroundColor:color+'22', pointRadius:0 },
+        { label:'CI Lower', data:lo, borderColor:'transparent', fill:false, pointRadius:0 },
+      ]
+    },
+    options:{
+      plugins:{legend:{display:true,labels:{filter:i=>i.text!=='CI Upper'&&i.text!=='CI Lower'}}},
+      scales:{ y:{ title:{display:true,text:'IMS Units'}, ticks:{callback:v=>(v/1000).toFixed(0)+'K'} } },
+      interaction:{ mode:'index', intersect:false },
+    }
+  });
+}
+
+fcChart('c-fc-panadol',  'Panadol',  C.orange, D.fc_pan_actual, D.fc_pan_fc, D.fc_pan_lo, D.fc_pan_hi, D.fc_pan_labels);
+fcChart('c-fc-augmentin','Augmentin',C.teal,   D.fc_aug_actual, D.fc_aug_fc, D.fc_aug_lo, D.fc_aug_hi, D.fc_pan_labels);
+fcChart('c-fc-pasbaan',  'PASBAAN',  C.navy,   D.fc_pas_actual, D.fc_pas_fc, D.fc_pas_lo, D.fc_pas_hi, D.fc_pan_labels);
+
+// ═══════════════════════════════════════════════════════
+//  TAB NAVIGATION
+// ═══════════════════════════════════════════════════════
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>
