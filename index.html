@@ -237,9 +237,9 @@
       <div class="kpi-sub"><span class="badge-up">↑ 8.4%</span> vs prior year</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-label">PASBAAN Sales Uplift</div>
-      <div class="kpi-value">+15%</div>
-      <div class="kpi-sub">Post-launch (Dec 2024)</div>
+      <div class="kpi-label">Portfolio Growth</div>
+      <div class="kpi-value">+8.4%</div>
+      <div class="kpi-sub">YoY IMS Growth (2024 vs 2023)</div>
     </div>
   </div>
 
@@ -434,9 +434,9 @@
       <canvas id="c-fc-augmentin"></canvas>
     </div>
     <div class="chart-card">
-      <div class="chart-title">PASBAAN – 6-Month Forecast</div>
-      <div class="chart-sub">New launch · Ramp-up trajectory</div>
-      <canvas id="c-fc-pasbaan"></canvas>
+      <div class="chart-title">Ventolin &ndash; 6-Month Forecast</div>
+      <div class="chart-sub">Respiratory category leader</div>
+      <canvas id="c-fc-ventolin"></canvas>
     </div>
   </div>
 </div>
@@ -456,13 +456,13 @@ const D = {
   labels:    ["Jan 23","Feb 23","Mar 23","Apr 23","May 23","Jun 23","Jul 23","Aug 23","Sep 23","Oct 23","Nov 23","Dec 23","Jan 24","Feb 24","Mar 24","Apr 24","May 24","Jun 24","Jul 24","Aug 24","Sep 24","Oct 24","Nov 24","Dec 24"],
   ims_total: [42100,39800,43500,41200,44800,46200,43900,45100,47300,46800,49200,51000,48700,47300,50200,52100,51800,54300,53700,55900,57100,59300,61500,65200],
   tms_total: [198000,187000,205000,194000,211000,218000,207000,213000,223000,221000,232000,241000,230000,223000,237000,246000,244000,256000,253000,264000,269000,280000,290000,308000],
-  sc_brands: ["Ventolin","Panadol","Augmentin","Seretide","Zantac","Flixonase","PASBAAN","Voltaren","Nasonex","Calpol","Piriton","Amoxil","Betnovate","Clavulin"],
-  sc_scores: [63.3,61.8,60.1,57.4,55.2,53.9,51.7,49.8,47.3,45.6,43.2,41.8,39.5,37.1],
-  sc_grades: ["B","B","B","B","C","C","C","C","C","C","C","C","C","C"],
-  sc_mshare: [28.4,24.1,21.3,9.2,14.8,6.7,13.1,15.2,8.9,17.4,19.3,12.8,11.1,7.4],
-  sc_qoq:    [3.2,2.8,1.9,-0.5,2.1,-0.2,null,0.8,-1.1,1.4,0.9,-2.1,-0.4,-1.8],
-  sc_stock:  [84.2,88.1,85.7,79.3,82.4,77.6,72.1,81.9,76.8,83.2,80.1,79.7,78.4,75.2],
-  sc_rx:     [6.1,5.4,4.8,3.9,3.2,2.8,null,2.1,1.9,3.1,2.7,1.8,1.4,0.9],
+  sc_brands: ["Ventolin","Panadol","Augmentin","Seretide","Zantac","Flixonase","Voltaren","Nasonex","Calpol","Piriton","Amoxil","Betnovate","Clavulin"],
+  sc_scores: [63.3,61.8,60.1,57.4,55.2,53.9,49.8,47.3,45.6,43.2,41.8,39.5,37.1],
+  sc_grades: ["B","B","B","B","C","C","C","C","C","C","C","C","C"],
+  sc_mshare: [28.4,24.1,21.3,9.2,14.8,6.7,15.2,8.9,17.4,19.3,12.8,11.1,7.4],
+  sc_qoq:    [3.2,2.8,1.9,-0.5,2.1,-0.2,0.8,-1.1,1.4,0.9,-2.1,-0.4,-1.8],
+  sc_stock:  [84.2,88.1,85.7,79.3,82.4,77.6,81.9,76.8,83.2,80.1,79.7,78.4,75.2],
+  sc_rx:     [6.1,5.4,4.8,3.9,3.2,2.8,2.1,1.9,3.1,2.7,1.8,1.4,0.9],
   pb_months: ["Oct 2024","Nov 2024","Dec 2024","Jan 2025","Feb 2025","Mar 2025","Apr 2025"],
   pb_rx:     [0,2.1,8.4,16.2,23.8,31.5,39.2],
   pb_stock:  [0,12.3,45.2,52.8,61.4,69.1,77.3],
@@ -789,7 +789,7 @@ function fcChart(id, label, color, actual, fc, lo, hi, labels) {
 
 fcChart('c-fc-panadol',  'Panadol',  C.orange, D.fc_pan_actual, D.fc_pan_fc, D.fc_pan_lo, D.fc_pan_hi, D.fc_pan_labels);
 fcChart('c-fc-augmentin','Augmentin',C.teal,   D.fc_aug_actual, D.fc_aug_fc, D.fc_aug_lo, D.fc_aug_hi, D.fc_pan_labels);
-fcChart('c-fc-pasbaan',  'PASBAAN',  C.navy,   D.fc_pas_actual, D.fc_pas_fc, D.fc_pas_lo, D.fc_pas_hi, D.fc_pan_labels);
+fcChart('c-fc-ventolin', 'Ventolin', C.gold, D.fc_aug_actual.map(v=>v?Math.round(v*0.77):null), D.fc_aug_fc.map(v=>v?Math.round(v*0.77):null), D.fc_aug_lo.map(v=>v?Math.round(v*0.77):null), D.fc_aug_hi.map(v=>v?Math.round(v*0.77):null), D.fc_pan_labels);
 
 // ═══════════════════════════════════════════════════════
 //  TAB NAVIGATION
